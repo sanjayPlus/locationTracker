@@ -55,7 +55,7 @@
 
             username = usernameInput.value;
 
-            fetch('http://localhost:3000/get-location/' + username)
+            fetch('https://locationtracker-qj3e.onrender.com/get-location/' + username)
                 .then((res) => res.json())
                 .then((data) => {
                     if (data[0].username === username) {
