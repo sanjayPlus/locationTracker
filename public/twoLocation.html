@@ -1,0 +1,126 @@
+<!-- live_location.html -->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Location Viewer</title>
+    <style>
+        #map {
+            height: 400px;
+        }
+    </style>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.1.3/socket.io.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+</head>
+
+<body>
+    <h1>Live Location Viewer</h1>
+    <form id="usernameForm">
+        <label for="username">Enter username to track:</label>
+        <input type="text" id="username" name="username" required>
+        <button type="button" onclick="startLiveLocation()">Get Live Location</button>
+    </form>
+    <p id="locationInfo"></p>
+    <div id="map"></div>
+
+    <script>
+        let map;
+        let socket;
+        let marker;
+        let username;
+        let intervalId;
+
+        function initMap() {
+            map = L.map('map').setView([0, 0], 2);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            // Initial fetch when the page loads
+            getLiveLocation();
+        }
+
+        function getLiveLocation() {
+            const usernameInput = document.getElementById('username');
+            const locationInfo = document.getElementById('locationInfo');
+
+            if (!usernameInput.value) {
+                alert('Please enter a username');
+                return;
+            }
+
+            username = usernameInput.value;
+
+            fetch('http://localhost:3000/get-location/' + username)
+                .then((res) => res.json())
+                .then((data) => {
+                    if (data[0].username === username) {
+                        const { latitude, longitude } = data[0];
+
+                        // Clear the previous marker
+                        if (marker) {
+                            map.removeLayer(marker);
+                        }
+
+                        // Update the map center and add a marker for the live location
+                        
+                        marker = L.marker([latitude, longitude]).addTo(map);
+
+                        // Display full details
+                        locationInfo.innerHTML = `Live Latitude: ${latitude}<br>Live Longitude: ${longitude}`;
+                    }
+                });
+        }
+        if (navigator.geolocation) {
+            // Start watching for location changes every 5 seconds
+            liveLocationWatchId = navigator.geolocation.watchPosition(
+                (position) => {
+                    const { latitude, longitude } = position.coords;
+
+                    // Define options for the blue circle marker
+                    const circleOptions = {
+                        color: 'blue',      // Border color
+                        fillColor: 'blue',  // Fill color
+                        fillOpacity: 0.5,   // Opacity of the fill color
+                        radius: 10          // Radius of the circle marker
+                    };
+
+                    // Add a blue circle marker
+                    const circleMarker = L.circle([latitude, longitude], circleOptions).addTo(map);
+                    // Display full details
+                    locationInfo.innerHTML = `Live Latitude: ${latitude}<br>Live Longitude: ${longitude}`;
+                },
+                (error) => {
+                    locationInfo.innerHTML = `Error getting live location: ${error.message}`;
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 5000,
+                    maximumAge: 0
+                }
+            );
+        }
+        const startLiveLocation = () => {
+            const usernameInput = document.getElementById('username');
+            if (!usernameInput.value) {
+                alert('Please enter a username');
+                return;
+            }
+
+            // Clear existing interval if it exists
+            clearInterval(intervalId);
+
+            // Fetch data every 5 seconds
+            intervalId = setInterval(getLiveLocation, 5000);
+        };
+
+        // Call the initMap function once Leaflet has loaded
+        window.onload = initMap;
+    </script>
+</body>
+
+</html>
